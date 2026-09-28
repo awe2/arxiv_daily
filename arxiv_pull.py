@@ -72,10 +72,11 @@ import xml.etree.ElementTree as ET
 # single connection. That limit is shared across all of arXiv's endpoints, so
 # the feed fetch, the API queries and our source downloads all use the same
 # minimum interval. https://info.arxiv.org/help/api/tou.html
-API_URL = "http://export.arxiv.org/api/query"
+API_URL = "https://export.arxiv.org/api/query"
 RSS_URL = "https://rss.arxiv.org/rss/{category}"   # daily announcement feed
 USER_AGENT = "arxiv_pull/3.0 (personal daily paper puller; contact: local user)"
-MIN_REQUEST_INTERVAL = 3.0   # min seconds between requests (arXiv ToU)
+MIN_REQUEST_INTERVAL = 5.0   # min seconds between requests (arXiv ToU asks >= 3s;
+                             # we leave headroom since the run isn't time-critical)
 NUM_RETRIES = 5              # retries for API queries and downloads
 MAX_RETRY_WAIT = 120.0       # cap on how long we'll honor a Retry-After / backoff
 _last_request_time = 0.0     # monotonic timestamp of the last arXiv request
@@ -211,7 +212,8 @@ class Result:
 
     def source_url(self) -> str:
         """URL of the raw .tex e-print source archive."""
-        return self.entry_id.replace("/abs/", "/e-print/")
+        url = self.entry_id.replace("/abs/", "/e-print/")
+        return re.sub(r"^http://", "https://", url)
 
 
 class Search:

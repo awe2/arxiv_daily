@@ -83,8 +83,10 @@ If this month's file does not exist, fall back to the most recent
 prior YYYY.MM.md in the interests/ directory and note the substitution
 in the output summary. I maintain interest files manually, so a missing
 file just means I haven't written one for this month yet — proceed
-with the most recent prior file without complaint. Only files named
-exactly YYYY.MM.md count; never use interests/TEMPLATE.md.
+with the most recent prior file without complaint. If there is no
+prior file either (only files for later months exist), use the
+earliest available file and note that. Only files named exactly
+YYYY.MM.md count; never use interests/TEMPLATE.md.
 
 If there is no YYYY.MM.md file at all, stop: do not pull papers, do
 not write a digest, do not commit or push. Print "No interest file
