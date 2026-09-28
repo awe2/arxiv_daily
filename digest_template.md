@@ -19,8 +19,8 @@ TEMPLATE NOTES (delete this comment block in the real digest):
 -->
 
 - **Interest file used:** interests/{YYYY.MM}.md {(current month) | (fallback — no {YYYY.MM}.md exists yet)}
-- **Categories pulled:** {comma-separated list, e.g. astro-ph.CO, astro-ph.EP, astro-ph.GA, astro-ph.HE, astro-ph.IM, astro-ph.SR, cs.LG, stat.ML, hep-ph}
-- **Papers scanned:** {N} ({breakdown, e.g. 88 astro-ph new/cross + 305 cs.LG/stat.ML/hep-ph})
+- **Categories pulled:** {comma-separated list: the six astro-ph sub-categories plus any extras from the interest file}
+- **Papers scanned:** {N} ({breakdown, e.g. 88 astro-ph new/cross + 305 from extras})
 - **After first filter:** {M} candidates reviewed with full text
 - **Final selected:** {P} papers across {K} tiers
 

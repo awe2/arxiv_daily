@@ -1,77 +1,80 @@
 # arxiv_daily
 
-Daily arXiv paper recommendations based on my research interests, curated by
-Claude and published as a browsable website.
+Weekday arXiv paper recommendations based on my research interests, curated by
+Claude and delivered by email.
 
-Each day a Claude Code routine pulls the latest arXiv listings across the
-astro-ph family (plus a few flagged cross-categories), filters them against my
-current interest file, reads the full text of the survivors, and writes a tiered
-digest with short summaries and key figures. The digests are published to a
-GitHub Pages site for easy reading.
+Each weekday morning a Claude Code routine pulls the latest arXiv listings
+across the astro-ph family (plus any extra categories flagged in my interest
+file), filters them against that file, reads the full text of the survivors,
+and writes a tiered digest with short summaries and key figures. The digest is
+committed to the `claude/digests` branch, and a GitHub Action emails it to me.
 
-## 📖 Read the digests
-
-**Website:** https://anninggao.github.io/arxiv_daily/
-
-- Browse by day from a menu **grouped by month**.
-- **Search** across every digest (e.g. `DESI`, `Lyman-alpha`).
-- Figures render in-browser — including **PDF figures**, via
-  [pdf.js](https://mozilla.github.io/pdf.js/), with no conversion.
-- LaTeX math renders via [KaTeX](https://katex.org/).
+Forked from Anning Gao's [arxiv_daily](https://github.com/anninggao/arxiv_daily).
 
 ## How it works
 
-A scheduled Claude Code routine runs the daily workflow defined in
-[`instruction.md`](instruction.md):
+The routine follows [`instruction.md`](instruction.md):
 
-1. Read the current month's interest file in [`interests/`](interests/).
-2. First pass — pull metadata for all astro-ph (+ flagged extras) and filter on
-   title/abstract.
-3. Second pass — fetch full LaTeX source for the candidates and re-filter.
+1. Read the current month's interest file in [`interests/`](interests/)
+   (falls back to the most recent earlier month).
+2. First pass: pull metadata for all of astro-ph (plus flagged extras) and
+   filter on title/abstract.
+3. Second pass: fetch full LaTeX source for the candidates and re-filter.
 4. Select papers into four tiers (highly relevant → adjacent → notable →
    meta-research) and extract a figure or two where it helps.
-5. Write the digest and commit to the `claude/digests` branch.
+5. Write `YYYY-MM/YYYY-MM-DD.md` and push it to the `claude/digests` branch.
+6. The push triggers [`.github/workflows/email-digest.yml`](.github/workflows/email-digest.yml),
+   which emails the digest as HTML. Figures are attached, and each figure in
+   the body links to its file on GitHub. (LaTeX math appears as raw `$...$`
+   in the email.)
 
-The fetcher [`arxiv_pull.py`](arxiv_pull.py) is standard-library-only, so the
-routine needs no dependencies.
+The fetcher [`arxiv_pull.py`](arxiv_pull.py) uses only the standard library,
+so the routine needs no dependencies.
+
+## Writing your interest file
+
+Copy [`interests/TEMPLATE.md`](interests/TEMPLATE.md) to
+`interests/YYYY.MM.md` (e.g. `interests/2026.10.md`) and fill it in. Commit
+it to `main`. Until at least one `YYYY.MM.md` exists, the routine stops
+without sending anything.
+
+- The six astro-ph sub-categories are always pulled. The **Extras** line under
+  "arXiv categories to monitor" adds more (e.g. `cs.LG`, `stat.ML`).
+- Everything else steers filtering and tiering. Specific topics, methods,
+  surveys, and authors work better than broad field names.
+- Write a new monthly file only when your interests change. Older files keep
+  applying until then.
+
+## One-time setup
+
+1. **Gmail app password.** On the Google account that will send the mail,
+   turn on 2-Step Verification, then create an App Password
+   (Google Account → Security → App passwords).
+2. **Repo secrets.** In **Settings → Secrets and variables → Actions**, add:
+   - `MAIL_USERNAME`: the sending Gmail address
+   - `MAIL_PASSWORD`: the app password from step 1
+   - `MAIL_TO`: where the digest should go (comma-separate multiple addresses)
+3. **GitHub access for Claude.** The Claude GitHub App needs access to this
+   repo with **Contents: write** so the routine can push to `claude/digests`.
+4. **Routine.** A scheduled Claude Code routine on this repo, running
+   Mon–Fri, with the prompt "Follow instruction.md in the repo root exactly."
+
+To test the email without waiting for a run: **Actions → Email daily digest →
+Run workflow** on the `claude/digests` branch. This re-sends the newest digest.
+
+The email workflow runs from the `claude/digests` branch. If you change
+`email-digest.yml` on `main`, merge `main` into `claude/digests` to pick it
+up.
 
 ## Repository layout
 
 | Path | What it is |
 |------|-----------|
-| `YYYY-MM/YYYY-MM-DD.md` | Daily digest files |
+| `YYYY-MM/YYYY-MM-DD.md` | Daily digest files (on `claude/digests`) |
 | `YYYY-MM/figures/{arxiv_id}/` | Figures referenced by the digests (`.pdf`, `.png`, …; never converted) |
-| `interests/YYYY.MM.md` | My monthly interest files (maintained by hand) |
+| `interests/YYYY.MM.md` | Monthly interest files (maintained by hand) |
+| `interests/TEMPLATE.md` | Blank interest-file template |
 | `arxiv_pull.py` | arXiv metadata + full-text fetcher |
 | `digest_template.md` | Canonical format for a daily digest |
-| `instruction.md` | The routine Claude follows each day |
-| `web/` | The static website (`build.py` + `index.html`/`app.js`/`style.css`) |
-| `.github/workflows/pages.yml` | Builds and deploys the site to GitHub Pages |
-
-## The website build
-
-The site is a small client-side app. `web/build.py` (stdlib only) scans the
-digest files, emits a `manifest.json` (menu, grouped by month) and a
-`search-index.json`, and assembles a self-contained `_site/` directory with the
-digests and figures copied verbatim. `marked`, `KaTeX`, and `pdf.js` are loaded
-from a CDN at runtime.
-
-Build and preview locally:
-
-```bash
-python3 web/build.py            # writes ./_site
-python3 -m http.server -d _site 8000
-# open http://localhost:8000
-```
-
-Deployment is automatic: every push to `claude/digests` runs
-`.github/workflows/pages.yml`, which builds `_site/` and publishes it to GitHub
-Pages.
-
-### One-time GitHub setup
-
-To enable auto-deploy from the `claude/digests` branch:
-
-1. **Settings → Pages → Source** → **GitHub Actions**.
-2. **Settings → Environments → `github-pages` → Deployment branches** → add
-   `claude/digests` (Pages restricts deploys to the default branch otherwise).
+| `instruction.md` | The routine Claude follows each run |
+| `.github/workflows/email-digest.yml` | Emails each new digest |

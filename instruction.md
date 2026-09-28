@@ -32,17 +32,16 @@ is needed. Invoke it as:
   literally. Do not modify it.
 - interests/ : directory of interest files, named YYYY.MM.md
   (e.g., 2026.05.md). I maintain these manually — do not create,
-  modify, or delete files in this directory.
+  modify, or delete files in this directory. interests/TEMPLATE.md
+  is a blank template, not an interest file — ignore it.
 - YYYY-MM/ : monthly output directory at the repo root (e.g., 2026-05/).
   Contains the daily digest .md files and a figures/ subdirectory.
 - YYYY-MM/figures/{arxiv_id}/ : extracted figures for each recommended
   paper, organized by arXiv ID
-- web/ : the static GitHub Pages website that renders the digests
-  (build script + HTML/CSS/JS). Repo infrastructure, NOT a routine
-  output — do not modify or delete it.
-- .github/workflows/pages.yml : GitHub Actions workflow that rebuilds
-  and republishes the website on every push to claude/digests. Do not
-  modify or delete it.
+- .github/workflows/email-digest.yml : GitHub Actions workflow that
+  emails the newest digest to me on every push to claude/digests.
+  Repo infrastructure, NOT a routine output — do not modify or delete
+  it.
 - scratch/ : temporary working area for daily pulls. Everything in here
   is deleted at the end of each run.
 
@@ -53,7 +52,7 @@ The only persistent outputs of this routine are:
 Everything you CREATE beyond these gets cleaned up (scratch/ and any
 temporary extraction directories). "Cleanup" means deleting your own
 temporary working files only — never pre-existing repo files such as
-web/ or .github/. Leave the website infrastructure untouched.
+.github/. Leave the email workflow untouched.
 
 ## How the fetcher works (read before running)
 
@@ -84,7 +83,13 @@ If this month's file does not exist, fall back to the most recent
 prior YYYY.MM.md in the interests/ directory and note the substitution
 in the output summary. I maintain interest files manually, so a missing
 file just means I haven't written one for this month yet — proceed
-with the most recent prior file without complaint.
+with the most recent prior file without complaint. Only files named
+exactly YYYY.MM.md count; never use interests/TEMPLATE.md.
+
+If there is no YYYY.MM.md file at all, stop: do not pull papers, do
+not write a digest, do not commit or push. Print "No interest file
+found — copy interests/TEMPLATE.md to interests/YYYY.MM.md and fill it
+in" as the Step 8 summary and exit.
 
 Parse the interest file to extract the arXiv categories I follow. The
 interest file's categories section contains TWO groups:
@@ -350,8 +355,7 @@ For each paper (exactly the template's shape):
 First, delete the entire scratch/ directory and any temporary
 extraction directories you created during Step 3. Cleanup removes ONLY
 the temporary files you created this run — leave every pre-existing repo
-file in place, including the website under web/ and the workflow under
-.github/. After cleanup, the only NEW files from this run should be the
+file in place, including the workflow under .github/. After cleanup, the only NEW files from this run should be the
 digest markdown and figures under YYYY-MM/.
 
 Do NOT touch the interests/ directory under any circumstances. I
@@ -407,11 +411,9 @@ Rules for this step:
 - If the push fails because the remote branch advanced (non-fast-
   forward), run `git fetch origin claude/digests` then
   `git rebase origin/claude/digests` and push again. Do not force-push.
-- The push to claude/digests automatically triggers the GitHub Pages
-  workflow (.github/workflows/pages.yml), which rebuilds and republishes
-  the website. No extra action is needed — the new digest appears on the
-  site a few minutes after the push. The `git add` above stages only the
-  digest outputs, so the website files are never re-committed by a run.
+- The push to claude/digests automatically triggers the email workflow
+  (.github/workflows/email-digest.yml), which emails the newest digest
+  to me. No extra action is needed. Do not try to send email yourself.
 
 ### Step 8: Print a summary to stdout
 

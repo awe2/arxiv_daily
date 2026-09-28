@@ -1,0 +1,59 @@
+name: Email daily digest
+
+on:
+  push:
+    branches: [claude/digests]
+    paths:
+      - "2*/*.md"          # daily digest files (YYYY-MM/YYYY-MM-DD.md)
+  workflow_dispatch:       # manual test: emails the newest digest on the chosen branch
+
+permissions:
+  contents: read
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare email body
+        id: prep
+        run: |
+          set -euo pipefail
+          DIGEST=$(ls 2*/20??-??-??.md 2>/dev/null | sort | tail -1 || true)
+          if [ -z "$DIGEST" ]; then
+            echo "No digest found." >&2
+            exit 1
+          fi
+          MONTH=$(dirname "$DIGEST")
+          DATE=$(basename "$DIGEST" .md)
+          BLOB="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/${MONTH}"
+
+          # Mail clients can't render PDF figures inline, so each figure embed
+          # becomes a link to the file on GitHub, and the file is attached.
+          sed -E "s#!\[[^]]*\]\((figures/([^/]+)/([^)]+))\)#[Figure: \2 / \3](${BLOB}/\1)#g" \
+            "$DIGEST" > email.md
+
+          ATTACH=$(grep -oE 'figures/[^)]+' "$DIGEST" | sed "s#^#${MONTH}/#" \
+            | while read -r f; do [ -f "$f" ] && echo "$f"; done | paste -sd, - || true)
+
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "attachments=$ATTACH" >> "$GITHUB_OUTPUT"
+          echo "Emailing $DIGEST (attachments: ${ATTACH:-none})"
+
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: arXiv Digest <${{ secrets.MAIL_USERNAME }}>
+          to: ${{ secrets.MAIL_TO }}
+          subject: "arXiv Digest — ${{ steps.prep.outputs.date }}"
+          html_body: file://email.md
+          convert_markdown: true
+          attachments: ${{ steps.prep.outputs.attachments }}

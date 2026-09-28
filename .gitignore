@@ -217,5 +217,3 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# GitHub Pages build output (web/build.py)
-/_site
